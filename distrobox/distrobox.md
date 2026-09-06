@@ -6,7 +6,7 @@ It is similar to VirtualBox that runs virtual machines, however with two key dif
 1. distrobox uses containers
 1. distrobox does NOT prioritize the container's (guest distro's) isolation and sandboxing. Instead, it does the opposite, it tightly integrates the guest distro with the host distro.
 
-> Simply put [distrobox] is a fancy wrapper around podman, docker, or lilipod to create and start containers which are highly integrated with the hosts.
+> Simply put, distrobox is a fancy wrapper around podman, docker, or lilipod to create and start containers which are highly integrated with the hosts.
 
 Distrobox itself is not a container manager and relies on Podman or Docker to create containers.
 
