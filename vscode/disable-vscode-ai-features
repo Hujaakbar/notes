@@ -1,0 +1,12 @@
+# Disable VSCode AI features
+
+To disable VSCode AI features
+
+1. go to `settings`
+1. select `Chat`
+1. select `Miscellaneous`
+1. check `Disable AI Features`
+
+![disable-vscode-ai-features](disable-vscode-ai-features.png)
+
+It disables and hides built-in AI features provided by GitHub Copilot, including chat and inline suggestions.
