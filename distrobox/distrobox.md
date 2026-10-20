@@ -12,6 +12,27 @@ Distrobox itself is not a container manager. It relies on Podman or Docker to cr
 
 Distrobox is well-suited for software development and troubleshooting the host operating system, without having to install software on the host.
 
+Table of Contents
+
+- [Appeal of the Distrobox](#appeal-of-the-distrobox)
+- [Use-Cases for Distrobox](#use-cases-for-distrobox)
+- [Security](#security)
+- [Tips](#tips)
+- [Commands](#commands)
+  - [create](#1-create)
+  - [list](#2-list)
+  - [enter](#3-enter)
+  - [stop](#4-stop)
+  - [rm](#5-rm)
+  - [ephemeral](#6-ephemeral)
+  - [export](#7-export)
+  - [host-exec](#8-host-exec)
+  - [assemble](#9-assemble)
+  - [upgrade](#10-upgrade)
+- [Config file for Distrobox](#config-file-for-distrobox)
+- [Version 2 of Distrobox](#version-2-of-distrobox)
+- [Alternatives](#alternatives)
+
 ## Appeal of the Distrobox
 
 The main appeals of the distrobox is following:
@@ -46,8 +67,8 @@ The main appeals of the distrobox is following:
 - For container management, use `podman` because it runs in rootless mode.
 - use Arch linux for development because it provides (latest versions of) vast library of software and packages.
 - use custom images that contains necessary libraries/tools
-- instead of using commands with many options, define them in manifest file and use [`distrobox assemble` command](#7-assemble).
-- to upgrade the containers' packages, use [`distrobox upgrade` command](#8-upgrade)
+- instead of using commands with many options, define them in manifest file and use [`distrobox assemble` command](#9-assemble).
+- to upgrade the containers' packages, use [`distrobox upgrade` command](#10-upgrade)
 - Distrobox uses container managers like podman, docker and lilipod. Using `--additional-flags/-a` options, it is possible to pass options/commands to these container managers.
 - create easily discard-able and reproducible containers
 
@@ -60,7 +81,7 @@ Distrobox has 12 commands. I will explain most commonly used commands below.
 
 ### 1. create
 
-`distrobox create` command create a container. *([docs](https://github.com/89luca89/distrobox/blob/main/docs/usage/distrobox-create.md))*
+`distrobox create` command create a container. _([docs](https://github.com/89luca89/distrobox/blob/main/docs/usage/distrobox-create.md))_
 
 ```bash
 distrobox create --name <container-name> --image ubuntu-latest
@@ -388,7 +409,7 @@ using url for manifest file path:
 distrobox assemble create --file https://some-url.com/files/distrobox.ini
 ```
 
-### 8. upgrade
+### 10. upgrade
 
 `distrobox upgrade` command will enter the specified list of containers and will perform an upgrade using the container's package manager.
 
