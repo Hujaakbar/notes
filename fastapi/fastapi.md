@@ -15,7 +15,19 @@ For in detail explanation refer to [official docs](https://fastapi.tiangolo.com/
 - [How to Install FastAPI](#install-fastapi)
 - [Basic Explanation](#basic-explanation)
 - [Operation Parameters](#operation-parameters)
+  - [Path parameters](#path-parameters)
+  - [Query parameters](#query-parameters)
+  - [Request body parameters](#request-body-parameters)
+  - [Cookie parameters](#cookie-parameters)
+  - [Header parameters](#header-parameters)
+  - [Form Fields (parameters)](#form-data)
+  - [Uploading files](#request-files)
 - [Response Model](#response-model)
+- [Response Status Code](#response-status-codes)
+- [Handling and Returning Errors](#handling-and-returning-errors)
+  - [How It works](#how-it-works)
+  - [Overriding Default Exception Handlers](#overriding-default-exception-handlers)
+  - [Creating Custom Exception Handlers](#creating-custom-exception-handlers)
 
 ## Install FastAPI
 
@@ -689,14 +701,12 @@ class User(BaseModel):
 @app.get(path="/users/{user_id}")
 def get_user(user_id: Annotated[int, Path(ge=0)]) -> User:
     return {"id": user_id, "name": "Jane", "age": 12}
-
-
-# throws error because age is less than 18
+    # throws error because age is less than 18
 ```
 
 ### User Separate Pydantic Models
 
-For request body and response models use below format:
+Oftentimes Request body model and response model have many common proprieties. For that reason, it is a good idea create them from a common parent like below:
 
 ```python
 from pydantic import BaseModel
@@ -708,10 +718,12 @@ class UserBase(BaseModel):
     age: int
 
 
+# This is used to validate request body data
 class UserRequest(UserBase):
     password: str
 
 
+# This is used to validate response data
 class UserResponse(UserBase):
     id: int
 ```
@@ -747,9 +759,9 @@ def create_user(new_user: UserRequest) -> UserResponse:
     return {"id": 12, "name": new_user.name, "age": new_user.age}
 ```
 
-## Handling Errors
+## Handling and Returning Errors
 
-When a client sends a wrong type of path argument, for example, `str` instead of `int`, FastAPI catches it during path parameter validation and returns `422 Validation Error` response.
+When request has invalid data, for example `str` instead of `int`, FastAPI catches it during request validation and returns `422 Validation Error` response.
 
 Try below path with wrong parameter:
 
@@ -759,25 +771,32 @@ from fastapi import FastAPI, status
 app = FastAPI()
 
 
-@app.get(path="/success/{id}", status_code=status.HTTP_200_OK)
+@app.get(path="/books/{id}", status_code=status.HTTP_200_OK)
 def create_user(id: int) -> str:
 
     return "succeeded"
+
+
+# request to /books/12 works but
+# request to /books/twelve returns 422 Validation Error
 ```
 
 ### How It works
 
 The error handling mechanism has two parts:
 
-- The path operation **raises** exception
+- The path operation **raises** exception (implicitly or explicitly)
 - Exception handlers catch the exception and returns JSON Response to the client
 
-For example, by default when a request contains invalid data, FastAPI internally raises a `RequestValidationError`. This exception is handled by `request_validation_exception_handler`.
+FastAPI has two built-in exception handlers:
 
-We can raise our own exceptions such as `404 not found` using `HTTPException`.
+- `request_validation_exception_handler`: handles `RequestValidationError` exceptions. When a **request** contains invalid data, FastAPI internally raises a `RequestValidationError`.
+- `http_exception_handler`: handles `HTTPException` exceptions. Path operation function should explicitly raise `HTTPException` to return HTTP responses with errors such as `404 Not Found`.
 
-> Note 📝
-> FastAPI's `HTTPException`s are handled by `fastapi.exception_handlers.http_exception_handler`
+> Note:
+> Both handlers returns JSON response.
+
+In the following example the path operation function raises `HTTPException` with status code of `404`:
 
 ```python
 from fastapi import FastAPI, HTTPException, status
@@ -788,77 +807,107 @@ app = FastAPI()
 items = {
     1: "item_1",
     2: "item_2",
-    3: "item_3",
-    4: "item_4",
 }
 
-class Item(BaseModel):
-    id: int
-    item: str
 
 @app.get(path="/success/{id}", status_code=status.HTTP_200_OK)
-def create_user(id: int) -> Item:
+def create_user(id: int) -> str:
+
     if items.get(id):
-        return {"id": id, "item": items.get(id)}
-    raise HTTPException(
+        return "item exists"
+
+    raise HTTPException(  # <======
         status_code=status.HTTP_404_NOT_FOUND,
         detail="the item with given id is not found",
     )
 ```
 
-### Creating and Overriding Exception Handlers
+`http_exception_handler` catches this exception and returns JSON data.
 
-We can create our own unique exceptions and catch them using custom exception handlers.
+### Exception handlers
 
-Creating a custom exception
+Exception handlers are functions with three characteristics:
 
-```python
-class UniqueException(Exception):
-    def __init__(self, name: str):
-        self.name = name
-```
-
-Creating an exception handler to catch our custom exception:
+1. they are decorated with `app.exception_handler` function
+1. the function takes "request" and "exception" as arguments
+1. the function returns response which will be sent to the client
 
 ```python
-@app.exception_handler(UniqueException)
-async def unique_exception_handler(request: Request, exc: UniqueException):
+@app.exception_handler(ExceptionClass)
+async def example_exception_handler(request: Request, exc: ExceptionClass):
     return JSONResponse(
         status_code=418,
-        content={"message": f"Oops! {exc.name} did something. There goes a rainbow..."},
+        content={"message": "Something went wrong. Try again later."},
     )
 ```
 
-Putting it together:
+### Overriding Default Exception Handlers
+
+We can override default exception handlers by handling the same exceptions.
+
+> Override default exception handlers is especially useful for logging purposes.
+
+Overriding `http_exception_handler`:
 
 ```python
-from fastapi import FastAPI, Request
+from logging import DEBUG, basicConfig, getLogger
+
+from fastapi import FastAPI, HTTPException, status
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = getLogger(name=__name__)
+basicConfig(level=DEBUG, filename="my_app.log")
+
+app = FastAPI()
+
+# Both FastAPI and Starlette have `HTTPException`.
+# FastAPI's `HTTPException` subclasses that of Starlette's.
+# To catch exceptions raised by both FastAPI path operations and
+# Starlette's internal functions, we should register
+# Starlette's `HTTPException` with the handler.
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc: StarletteHTTPException):
+    logger.error(msg=f"HTTPException: {exc.status_code}.\n\tDetail: {exc.detail}")
+    return await http_exception_handler(request, exc)
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    if item_id == 7:
+        return {"item_id": item_id}
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Item was not found"
+    )
+```
+
+> Note:
+> Both FastAPI and Starlette have `HTTPException`. FastAPI's `HTTPException` subclasses that of Starlette's. To **catch** exceptions raised by both FastAPI path operations and Starlette's internal functions, we should register Starlette's `HTTPException` with the handler.
+
+### Creating Custom Exception Handlers
+
+We can raise any exception we want. We can even create our own exception and raise it. However, FastAPI's built-in exception handlers catch only `HTTPException` and `RequestValidationError` exceptions. To handle other exceptions, we should create custom exception handlers.
+
+Example: Creating an exception handler to catch `NotImplementedError` exceptions
+
+```python
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-
-
-class UniqueException(Exception):
-    def __init__(self, name: str):
-        self.name = name
-
 
 app = FastAPI()
 
 
-@app.exception_handler(UniqueException)
-async def unique_exception_handler(request: Request, exc: UniqueException):
+@app.exception_handler(NotImplementedError)
+async def not_implemented_exception_handler(request: Request, exc: NotImplementedError):
     return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={"message": f"Custom exception was raised. Name: {exc.name}"},
+        status_code=status.HTTP_425_TOO_EARLY,
+        content={
+            "message": "This feature has not been implemented yet. Please, check back later."
+        },
     )
 
 
-@app.get("/names/{name}")
-async def read_unicorn(name: str):
-    if name == "unique":
-        raise UniqueException(name = name)
-    return {"name": name}
+@app.get("/new-feature/")
+async def read_unicorn():
+    raise NotImplementedError
 ```
-
-#### Overriding Default Exception Handlers
-
-In some cases, especially for logging purposes, it might be useful to override default exception handlers.
