@@ -1,78 +1,58 @@
 # Distrobox
 
 [Distrobox](https://github.com/89luca89/distrobox) is open-source software, used for running various linux distros as a guest distro within a host distro.
-It is similar to VirtualBox that runs virtual machines, however with two key differences:
+It is similar to [VirtualBox](https://www.virtualbox.org/) that runs virtual machines, however with two key differences:
 
 1. distrobox uses containers
 1. distrobox does NOT prioritize the container's (guest distro's) isolation and sandboxing. Instead, it does the opposite, it tightly integrates the guest distro with the host distro.
 
 > Simply put, distrobox is a fancy wrapper around podman, docker, or lilipod to create and start containers which are highly integrated with the hosts.
 
-Distrobox itself is not a container manager and relies on Podman or Docker to create containers.
+Distrobox itself is not a container manager. It relies on Podman or Docker to create and manage containers.
 
-**Distrobox is well-suited for software development and troubleshooting the host operating system, without having to install software on the host.**
-
-Note: Distrobox is relatively new software; the fist public release was in 2021.
+Distrobox is well-suited for software development and troubleshooting the host operating system, without having to install software on the host.
 
 ## Appeal of the Distrobox
 
-The main appeal of the distrobox is two-fold:
+The main appeals of the distrobox is following:
 
-1. It makes working with containers very easy
-1. it makes the host's filesystem, network and other components available to the container. Configuring this set-up manually with docker/podman takes time and would probably be error-prone. Distrobox uses podman/docker under the hood and abstracts away these configurations.
+1. It allows installing various software in the containers while keeping the host OS clean.
+
+1. It makes working with containers very easy (starting containers, accessing the container apps etc.).
+
+1. By default containers can access host's filesystem, network and other components. Configuring this set-up manually with docker/podman is cumbersome and would probably be error-prone.
 
 ## Use-Cases for Distrobox
 
 1. Keeping the host distro clean by installing apps into the containers. When containers are deleted, all the installed apps will be removed too.
 
-    - files created at home directory and its subdirectories are NOT removed.
+    - Files created at home directory and its subdirectories by the containers are NOT removed when the containers are deleted.
 
-    - Distrobox makes it very easy to enter the container's shell environment with single `distrobox enter` command.
-    The apps installed inside the container is not accessible by the host.
-
-        Example:
-
-        Inside the container `rg` (ripgrep) program is installed.
-
-        ```bash
-        📦[user1@ubuntu ~]$ which rg
-        /usr/bin/rg
-        ```
-
-        However, it is not accessible from the host.
-
-        The host:
-
-        ```bash
-        user1@fedora:~$ which rg
-        /usr/bin/which: no rg in (/home/user1/.local/bin:/home/user1/bin:/usr/local/bin:/usr/bin)
-        ```
-
-    - It is possible to make the apps installed inside the containers available to the host. So that, those apps can be used by the host.
-    This process is called _exporting_.
+    - By default, apps installed inside the container are not accessible by the host. However, it is possible to make them accessible. This process is called _exporting_.
 
 2. Providing a mutable environment on an immutable OS, like ChromeOS, Fedora Atomic Desktops (e.g. Silverblue), etc
 
 3. Providing a locally privileged environment for `sudo`less setups (e.g. company-provided laptops, security reasons, etc...)
 
-4. Enabling running development-friendly distros like Arch linux within other distros such as Ubuntu LTS
+4. Running development-friendly distros like Arch linux within other distros such as Ubuntu LTS.
 
 ## Security
 
-> Isolation and sandboxing are not the main aims of the distrobox project, on the contrary it aims to tightly integrate the container with the host. The container will have complete access to your home, pen drive, and so on, so do not expect it to be highly sandboxed like a plain docker/podman container or a Flatpak.
+> Isolation and sandboxing are not the main aims of the distrobox project, on the contrary it aims to tightly integrate the container with the host. The container will have complete access to host's home, pen drive, and so on, so do not expect it to be highly sandboxed like a plain docker/podman container or a Flatpak.
 
 ## Tips
 
-- for distrobox docs, use GitHub repo [docs](https://github.com/89luca89/distrobox/tree/main/docs/usage). The docs website is outdated
-- for container management, use `podman` because it runs in rootless mode
-- use Arch linux for development because it provides (latest versions of) vast library of software and libraries
-- instead of using long commands, use [`distrobox assemble` command](#7-assemble) with manifest file
+- To access up-to-date docs, use the [docs](https://github.com/89luca89/distrobox/tree/main/docs/usage) in GitHub repo. The [distrobox.it](https://distrobox.it/) website is outdated.
+- For container management, use `podman` because it runs in rootless mode.
+- use Arch linux for development because it provides (latest versions of) vast library of software and packages.
+- use custom images that contains necessary libraries/tools
+- instead of using commands with many options, define them in manifest file and use [`distrobox assemble` command](#7-assemble).
 - to upgrade the containers' packages, use [`distrobox upgrade` command](#8-upgrade)
 - Distrobox uses container managers like podman, docker and lilipod. Using `--additional-flags/-a` options, it is possible to pass options/commands to these container managers.
 - create easily discard-able and reproducible containers
-- use custom images that contains necessary libraries/tools
 
-Note: NixOS is not a supported container distro, and there are currently no plans to bring support to it.
+Note 📝:
+NixOS is not a supported container distro, and there are currently no plans to bring support to it.
 
 ## Commands
 
@@ -80,7 +60,7 @@ Distrobox has 12 commands. I will explain most commonly used commands below.
 
 ### 1. create
 
-`distrobox create` command create a container, ([docs](https://github.com/89luca89/distrobox/blob/main/docs/usage/distrobox-create.md)).
+`distrobox create` command create a container. *([docs](https://github.com/89luca89/distrobox/blob/main/docs/usage/distrobox-create.md))*
 
 ```bash
 distrobox create --name <container-name> --image ubuntu-latest
@@ -90,12 +70,46 @@ Some of the options:
 
 |option|description|
 |---|---|
-|`--name`/`-n`|name for the distrobox (default is my-distrobox)|
+|`--name`/`-n`|name for the container (default is my-distrobox)|
 |`--image`/`-i`|image to use for the container (default is fedora workstation latest)|
-|`--hostname`|hostname for the distrobox (default: /</container-name/>)|
+|`--hostname`|hostname for the container (default: /</container-name/>)|
 |`--home`/`-H`|select a custom HOME directory for the container. Useful to avoid host's home littering with temp files.|
-|`--clone`/`-c`|name of the distrobox container to use as base for a new container this will be useful to either rename an existing distrobox or have multiple copies of the same environment.|
+|`--clone`/`-c`|name of the distrobox container to use as base for a new container. This will be useful to either rename an existing distrobox or have multiple copies of the same environment.|
+|`--additional-flags`/`-a`|additional flags to pass to the container manager (docker, podman)|
+|`--dry-run`/`-d`|only print the container manager command generated|
 |`--verbose`/`-v`|show more verbosity|
+
+Dry run:
+
+```txt
+distrobox create --name arch-dev --image arch:latest  --hostname dev --dry-run
+
+podman create
+--hostname "dev"
+--name "arch-dev"
+--privileged
+--security-opt label=disable
+--security-opt apparmor=unconfined
+--pids-limit=-1
+--user root:root
+--ipc host
+--network host
+... # redacted
+--env "SHELL=bash"
+--env "HOME=/home/xyz"
+--env "container=podman"
+... # redacted
+--env "CONTAINER_ID=arch-dev"
+... # redacted
+
+--volume /dev/null:/run/.distrobox.rootless:ro
+--entrypoint /usr/bin/entrypoint
+arch:latest
+--verbose
+... # redacted
+--additional-packages ""
+-- ''
+```
 
 Cloning a container:
 
@@ -128,6 +142,16 @@ If the container was not running, this command starts the container and enters i
 distrobox enter <container-name>
 ```
 
+some of the options:
+
+```txt
+--additional-flags/-a:   additional flags to pass to the container manager command
+
+--dry-run/-d:            only print the container manager command generated
+
+--verbose/-v:            show more verbosity
+```
+
 ### 4. stop
 
 `distrobox stop` command stops the running container.
@@ -147,7 +171,11 @@ distrobox stop container-name1 container-name2
 Some of the options:
 
 ```txt
---all/-a:        stop all distroboxes
+--all/-a:      stop all distroboxes
+
+--yes/-Y:      non-interactive, stop without asking
+
+--verbose/-v:  show more verbosity
 ```
 
 stopping all containers:
@@ -167,11 +195,15 @@ distrobox rm <container-name>
 Some of the options:
 
 ```txt
---all/-a:        delete all distroboxes
+--all/-a:       delete all distroboxes
 
---force/-f:      force deletion
+--force/-f:     force deletion
 
---rm-home:       remove the mounted home if it differs from the host user's one
+--rm-home:      remove the mounted home if it differs from the host user's one
+
+--yes/-Y:       non-interactive, skip the deletion confirmation prompt
+
+--verbose/-v:   show more verbosity
 ```
 
 ### 6. ephemeral
@@ -202,7 +234,73 @@ Note: a container is not just stopped, but removed as well.
 
 It is possible to provide `distrobox ephemeral` command an already created container. Even in this case, when container is exited, the container is removed.
 
-### 7. assemble
+### 7. export
+
+`distrobox export` command makes the apps and binaries installed int he container available to the host.
+
+> Run this command inside the container.
+
+Exporting VSCode:
+
+```txt
+distrobox-export --app code --extra-flags "--foreground"
+```
+
+Exporting binary:
+
+> Note: when exporting binaries, `--export-path` option must be specified.
+
+```txt
+distrobox-export --bin /usr/bin/vim --export-path ~/.local/bin
+```
+
+Some of the options:
+
+```txt
+--app/-a:             name of the application (or desktopfile absolute path) to export
+
+--bin/-b:             absolute path of the binary to export
+
+--list-apps:          list applications exported from this container
+
+--list-binaries       list binaries exported from this container
+
+--delete/-d:          delete exported application or binary
+
+--export-path/-ep:    path where to export the binary
+
+--extra-flags/-ef:    extra flags to add to the command
+
+--enter-flags/-nf:    flags to add to `distrobox enter`
+
+--sudo/-S:            specify if the exported item should be run as sudo
+
+--verbose/-v:         show more verbosity
+```
+
+### 8. host-exec
+
+`distrobox-host-exec` command allows executing the commands on the host, while inside of a container.
+
+```txt
+distrobox-host-exec ls
+```
+
+Instead of running whole command, it may be more convenient to symlink a command name to `distrobox-host-exec`.
+
+Using host's podman command within a container:
+
+```txt
+sudo ln -s /usr/bin/distrobox-host-exec /usr/local/bin/podman
+```
+
+> `ln` command creates links to files and directories
+> `-s`/`--symbolic` link
+> if no option is provided, it creates a hard link
+
+This is especially useful to run tools such as [wrkflw](https://github.com/bahdotsh/wrkflw) within a container that needs to access podman.
+
+### 9. assemble
 
 `distrobox assemble` command allows creating and destroying containers as defined in a manifest file. Distrobox, by default, expects the manifest file to be named `distrobox.ini` and be in the current directory, but it can be specified using the `--file` flag as well.
 
@@ -223,12 +321,12 @@ image=arch:latest
 hostname="arch-box"
 entry=false
 replace=false
-additional_packages="git bat tldr"
+additional_packages="git bat tldr cargo"
 ```
 
-Some of the options available for manifest file.
+#### Some of the options available for manifest file
 
-- `include`: if containers share a lot of the configuration, instead of duplicating the configs, use `include` property and overwrite differing attributes.
+- `include`: if containers use the same base image and share a lot of the configuration, instead of duplicating the configs, use `include` property and overwrite differing attributes.
 
     ```ini
     [ubuntu]
@@ -252,16 +350,24 @@ Some of the options available for manifest file.
 - `init_hooks`, `pre_init_hooks` and other options that runs commands/scripts are executed every time container starts.
 - all the options that take boolean values have `false` as a default value
 
+- `exported_apps`: App names to export
+
+- `exported_bins`: Binaries to export
+
 `distrobox assemble` command is used with either `create` or `rm` subcommands.
 
-Some of the options:
+#### Some of the options for the `distrobox assemble create/rm` command
 
 ```txt
---file:              path or URL to the distrobox manifest/ini file
---name/-n:           run against a single entry in the manifest/ini file
---replace/-R:        replace already existing distroboxes with matching names
---dry-run/-d:        only print the container manager command generated
---verbose/-v:        show more verbosity
+--file:         path or URL to the distrobox manifest/ini file
+
+--name/-n:      run against a single entry in the manifest/ini file
+
+--replace/-R:   replace already existing distroboxes with matching names
+
+--dry-run/-d:   only print the container manager command generated
+
+--verbose/-v:   show more verbosity
 ```
 
 creating all the containers defined in the manifest file:
